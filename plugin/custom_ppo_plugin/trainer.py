@@ -18,7 +18,7 @@ from mlagents.trainers.policy.policy import Policy
 
 from typing import cast, Type, Union, Dict, Any
 import attr
-from .wrapper_actor import WrapperActor
+from .wrapper_actor import WrapperActor, WrapperSharedActorCritic
 
 logger = get_logger(__name__)
 TRAINER_NAME = "custom_ppo"
@@ -75,7 +75,13 @@ class CustomPPOTrainer(OnPolicyTrainer):
             "tanh_squash": False,
         }
         if self.shared_critic:
-            raise Exception("Only simple actor is supported for now")
+            # raise Exception("Only simple actor is supported for now")
+            reward_signal_configs = self.trainer_settings.reward_signals
+            reward_signal_names = [
+                key.value for key, _ in reward_signal_configs.items()
+            ]
+            actor_cls = WrapperSharedActorCritic
+            actor_kwargs.update({"stream_names": reward_signal_names})
 
         network_settings = self.trainer_settings.network_settings
         network_settings.path_to_model = self.hyperparameters.path_to_model

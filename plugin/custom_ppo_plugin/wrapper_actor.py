@@ -1,8 +1,9 @@
-from mlagents.trainers.torch_entities.networks import SimpleActor, NetworkBody
+from mlagents.trainers.torch_entities.networks import SimpleActor, NetworkBody, Critic
 from mlagents.trainers.settings import ScheduleType, NetworkSettings
 from mlagents_envs.base_env import ActionSpec, ObservationSpec, ObservationType
 from mlagents.trainers.torch_entities.action_model import ActionModel
 from mlagents.trainers.torch_entities.agent_action import AgentAction
+from mlagents.trainers.torch_entities.decoders import ValueHeads
 from mlagents.trainers.buffer import AgentBuffer
 
 from mlagents.torch_utils import torch, nn
@@ -114,7 +115,6 @@ class WrapperActor(SimpleActor):
             requires_grad=False,
         )
 
-        # self.network_body = NetworkBody(observation_specs, network_settings)
         custom_settings = cast(CustomPPONetworkSettings, network_settings)
 
         path = custom_settings.path_to_model
@@ -130,16 +130,6 @@ class WrapperActor(SimpleActor):
         self.memory_size_vector = torch.nn.Parameter(
             torch.Tensor([int(self.network_body.memory_size)]), requires_grad=False
         )
-
-        """
-        self.action_model = ActionModel(
-            self.encoding_size,
-            action_spec,
-            conditional_sigma=conditional_sigma,
-            tanh_squash=tanh_squash,
-            deterministic=network_settings.deterministic,
-        )
-        """
 
         exec("self.action_models = module.get_action_models()")
         self.action_model = AggregatedActionModel(self.action_models, self.action_spec)
@@ -232,3 +222,35 @@ class WrapperActor(SimpleActor):
         if self.network_body.memory_size > 0:
             export_out += [memories_out]
         return tuple(export_out)
+    
+class WrapperSharedActorCritic(WrapperActor, Critic):
+    def __init__(
+        self,
+        observation_specs: List[ObservationSpec],
+        network_settings: NetworkSettings,
+        action_spec: ActionSpec,
+        stream_names: List[str],
+        conditional_sigma: bool = False,
+        tanh_squash: bool = False,
+    ):
+        self.use_lstm = network_settings.memory is not None
+        super().__init__(
+            observation_specs,
+            network_settings,
+            action_spec,
+            conditional_sigma,
+            tanh_squash,
+        )
+        self.stream_names = stream_names
+        self.value_heads = ValueHeads(stream_names, self.encoding_size)
+
+    def critic_pass(
+        self,
+        inputs: List[torch.Tensor],
+        memories: Optional[torch.Tensor] = None,
+        sequence_length: int = 1,
+    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+        encoding, memories_out = self.network_body(
+            inputs, memories=memories, sequence_length=sequence_length
+        )
+        return self.value_heads(encoding), memories_out
