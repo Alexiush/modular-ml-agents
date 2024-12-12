@@ -78,7 +78,7 @@ class BrainHardSelection(nn.Module):
         for shape in output_sizes:
             selector_layers = []
             
-            selector_layers.append(HardSelector(input_size, 0.3))
+            selector_layers.append(HardSelector(hidden_size, 0.3))
             for _ in range(feature_selection_layers - 1):
                 selector_layers.append(linear_layer(hidden_size, hidden_size))
             selector_layers.append(linear_layer(hidden_size, shape))

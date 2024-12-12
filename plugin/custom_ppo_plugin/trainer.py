@@ -123,6 +123,8 @@ class CustomPPOTrainer(OnPolicyTrainer):
             trajectory.next_obs,
             trajectory.done_reached and not trajectory.interrupted,
         )
+        if value_memories is not None:
+            agent_buffer_trajectory[BufferKey.CRITIC_MEMORY].set(value_memories)
 
         for name, v in value_estimates.items():
             agent_buffer_trajectory[RewardSignalUtil.value_estimates_key(name)].extend(
