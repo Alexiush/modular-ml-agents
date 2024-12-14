@@ -242,6 +242,7 @@ class WrapperSharedActorCritic(WrapperActor, Critic):
             tanh_squash,
         )
         self.stream_names = stream_names
+        self.encoding_size = self.action_model.encoding_size
         self.value_heads = ValueHeads(stream_names, self.encoding_size)
 
     def critic_pass(
@@ -253,4 +254,5 @@ class WrapperSharedActorCritic(WrapperActor, Critic):
         encoding, memories_out = self.network_body(
             inputs, memories=memories, sequence_length=sequence_length
         )
+
         return self.value_heads(encoding), memories_out
