@@ -25,7 +25,8 @@ TRAINER_NAME = "custom_ppo"
 
 @attr.s(auto_attribs=True)
 class CustomPPOSettings(PPOSettings):
-    path_to_model: str = "" # attr.ib()
+    path_to_model: str = ""
+    path_to_mapping: str = ""
 
 class CustomPPOTrainer(OnPolicyTrainer):
     """The PPOTrainer is an implementation of the PPO algorithm."""
@@ -85,6 +86,7 @@ class CustomPPOTrainer(OnPolicyTrainer):
 
         network_settings = self.trainer_settings.network_settings
         network_settings.path_to_model = self.hyperparameters.path_to_model
+        network_settings.path_to_mapping = self.hyperparameters.path_to_mapping
 
         policy = TorchPolicy(
             self.seed,

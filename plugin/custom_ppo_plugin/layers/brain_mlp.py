@@ -12,23 +12,26 @@ class BrainMLP(nn.Module):
         aggregation_layers: int,
         hidden_size: int,
         feature_selection_layers: int,
-        output_sizes: List[int]
+        output_sizes: List[int],
+        output_channels: List[int]
     ):
         super().__init__()
 
         self.feature_aggregator = LinearEncoder(input_size, aggregation_layers, hidden_size)
         feature_selectors = []
 
-        for shape in output_sizes:
+        for shape, ch in zip(output_sizes, output_channels):
             selector_layers = []
             
             for _ in range(feature_selection_layers - 1):
                 selector_layers.append(linear_layer(hidden_size, hidden_size))
-            selector_layers.append(linear_layer(hidden_size, shape))
+            selector_layers.append(linear_layer(hidden_size, shape * ch))
 
             feature_selector = torch.nn.Sequential(*selector_layers)
             feature_selectors.append(feature_selector)
         self.feature_selectors = nn.ModuleList(feature_selectors)
+
+        self.output_channels = output_channels
 
         self.version_number = torch.nn.Parameter(
             torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
@@ -36,7 +39,7 @@ class BrainMLP(nn.Module):
 
     def forward(self, input_tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
-        return [feature_selector(features) for feature_selector in self.feature_selectors]
+        return [feature_selector(features).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]
     
 class HardSelector(nn.Module):
     MODEL_EXPORT_VERSION = 3  # Corresponds to ModelApiVersion.MLAgents2_0
@@ -68,24 +71,27 @@ class BrainHardSelection(nn.Module):
         aggregation_layers: int,
         hidden_size: int,
         feature_selection_layers: int,
-        output_sizes: List[int]
+        output_sizes: List[int],
+        output_channels: List[int]
     ):
         super().__init__()
 
         self.feature_aggregator = LinearEncoder(input_size, aggregation_layers, hidden_size)
         feature_selectors = []
 
-        for shape in output_sizes:
+        for shape, ch in zip(output_sizes, output_channels):
             selector_layers = []
             
             selector_layers.append(HardSelector(hidden_size, 0.3))
             for _ in range(feature_selection_layers - 1):
                 selector_layers.append(linear_layer(hidden_size, hidden_size))
-            selector_layers.append(linear_layer(hidden_size, shape))
+            selector_layers.append(linear_layer(hidden_size, shape * ch))
 
             feature_selector = torch.nn.Sequential(*selector_layers)
             feature_selectors.append(feature_selector)
         self.feature_selectors = nn.ModuleList(feature_selectors)
+
+        self.output_channels = output_channels
 
         self.version_number = torch.nn.Parameter(
             torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
@@ -93,4 +99,4 @@ class BrainHardSelection(nn.Module):
 
     def forward(self, input_tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
-        return [feature_selector(features) for feature_selector in self.feature_selectors]
+        return [feature_selector(features).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]

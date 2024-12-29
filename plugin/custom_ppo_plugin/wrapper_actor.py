@@ -21,28 +21,32 @@ from .action_model_aggregated import AggregatedActionModel
 
 @attr.s(auto_attribs=True)
 class CustomPPONetworkSettings(NetworkSettings):
-    path_to_model: str = "" # attr.ib()
+    path_to_model: str = ""
+    path_to_mapping: str = ""
 
 class ImportedNetworkBody(NetworkBody):
     def __init__(
         self,
         observation_specs: List[ObservationSpec],
-        spec,
-        module
+        model_spec,
+        model_module,
+        mapping_spec,
+        mapping_module
     ):
         nn.Module.__init__(self)
         self.observation_specs = observation_specs
 
-        self.load_body(spec, module)
+        self.load_body(model_spec, model_module, mapping_spec, mapping_module)
 
     # If update/copy norm is not layer-dependent I can fake them via residuals
     # Yeah, normalization is required due to parallelizaton/distribution/batching
 
-    def load_body(self, spec, module):
-        spec.loader.exec_module(module)
+    def load_body(self, model_spec, model_module, mapping_spec, mapping_module):
+        model_spec.loader.exec_module(model_module)
+        mapping_spec.loader.exec_module(mapping_module)
 
         # Get body 
-        exec("self.body = module.Model(self.observation_specs)")
+        exec("self.body = model_module.Model(self.observation_specs, mapping_module)")
 
     def update_normalization(self, buffer: AgentBuffer) -> None:
         pass
@@ -117,11 +121,15 @@ class WrapperActor(SimpleActor):
 
         custom_settings = cast(CustomPPONetworkSettings, network_settings)
 
-        path = custom_settings.path_to_model
-        spec = importlib.util.spec_from_file_location("model", path)
-        module = importlib.util.module_from_spec(spec)
+        path_to_model = custom_settings.path_to_model
+        model_spec = importlib.util.spec_from_file_location("model", path_to_model)
+        model_module = importlib.util.module_from_spec(model_spec)
 
-        self.network_body = ImportedNetworkBody(observation_specs, spec, module)
+        path_to_mapping = custom_settings.path_to_mapping
+        mapping_spec = importlib.util.spec_from_file_location("mapping", path_to_mapping)
+        mapping_module = importlib.util.module_from_spec(mapping_spec)
+
+        self.network_body = ImportedNetworkBody(observation_specs, model_spec, model_module, mapping_spec, mapping_module)
 
         if network_settings.memory is not None:
             self.encoding_size = network_settings.memory.memory_size // 2
@@ -131,7 +139,7 @@ class WrapperActor(SimpleActor):
             torch.Tensor([int(self.network_body.memory_size)]), requires_grad=False
         )
 
-        exec("self.action_models = module.get_action_models()")
+        exec("self.action_models = model_module.get_action_models(mapping_module.literals_mapping)")
         self.action_model = AggregatedActionModel(self.action_models, self.action_spec)
 
     @property
