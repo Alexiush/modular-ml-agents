@@ -22,7 +22,7 @@ def actions_combine(
     if any(map(lambda t: t is not None, continuous_tensors)):
         continuous_tensor = torch.cat(continuous_tensors, dim=1)
 
-    discrete_lists = map(lambda a: a.discrete_list, actions)
+    discrete_lists = list(map(lambda a: a.discrete_list, actions))
     if any(map(lambda t: t is not None, discrete_lists)):
         discrete_list = list(itertools.chain.from_iterable(discrete_lists))
 
@@ -37,11 +37,11 @@ def action_probs_combine(
     if any(map(lambda t: t is not None, continuous_tensors)):
         continuous_tensor = torch.cat(continuous_tensors, dim=1)
 
-    discrete_lists = map(lambda a: a.discrete_list, action_probs)
+    discrete_lists = list(map(lambda a: a.discrete_list, action_probs))
     if any(map(lambda t: t is not None, discrete_lists)):
         discrete_list = list(itertools.chain.from_iterable(discrete_lists))
     
-    all_discrete_lists = map(lambda a: a.all_discrete_list, action_probs)
+    all_discrete_lists = list(map(lambda a: a.all_discrete_list, action_probs))
     if any(map(lambda t: t is not None, all_discrete_lists)):
         all_discrete_list = list(itertools.chain.from_iterable(all_discrete_lists))
 
