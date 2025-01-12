@@ -38,9 +38,6 @@ class ImportedNetworkBody(NetworkBody):
 
         self.load_body(model_spec, model_module, mapping_spec, mapping_module)
 
-    # If update/copy norm is not layer-dependent I can fake them via residuals
-    # Yeah, normalization is required due to parallelizaton/distribution/batching
-
     def load_body(self, model_spec, model_module, mapping_spec, mapping_module):
         model_spec.loader.exec_module(model_module)
         mapping_spec.loader.exec_module(mapping_module)
@@ -50,15 +47,14 @@ class ImportedNetworkBody(NetworkBody):
 
     def update_normalization(self, buffer: AgentBuffer) -> None:
         pass
-        # self.observation_encoder.update_normalization(buffer)
 
     def copy_normalization(self, other_network: "NetworkBody") -> None:
         pass
-        # self.observation_encoder.copy_normalization(other_network.observation_encoder)
 
     @property
     def memory_size(self) -> int:
-        return 0
+        # preserves one number that is how many memories to be available
+        return 1
 
     def forward(
         self,
@@ -68,17 +64,14 @@ class ImportedNetworkBody(NetworkBody):
         sequence_length: int = 1,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         
-        # Needs only the inner model 
-        encoding = self.body(inputs)
-        
-        """
-        if self.use_lstm:
-            # Resize to (batch, sequence length, encoding size)
-            encoding = encoding.reshape([-1, sequence_length, self.h_size])
-            encoding, memories = self.lstm(encoding, memories)
-            encoding = encoding.reshape([-1, self.m_size // 2])
-        """
-        return encoding, memories
+        memories_mask = memories
+        if isinstance(memories_mask, list) or memories_mask.nelement() <= 0:
+            memories_mask = torch.tensor(0)
+
+        encoding = self.body(inputs, memories_mask)
+        memories_mask.add_(1)
+
+        return encoding, memories_mask
 
 class WrapperActor(SimpleActor):
     """
@@ -203,6 +196,7 @@ class WrapperActor(SimpleActor):
         At this moment, torch.onnx.export() doesn't accept None as tensor to be exported,
         so the size of return tuple varies with action spec.
         """
+
         encoding, memories_out = self.network_body(
             inputs, memories=memories, sequence_length=1
         )

@@ -19,6 +19,7 @@ from mlagents.trainers.policy.policy import Policy
 from typing import cast, Type, Union, Dict, Any
 import attr
 from .wrapper_actor import WrapperActor, WrapperSharedActorCritic
+from .optimizer import CustomPPOOptimizer
 
 logger = get_logger(__name__)
 TRAINER_NAME = "custom_ppo"
@@ -95,10 +96,13 @@ class CustomPPOTrainer(OnPolicyTrainer):
             actor_cls,
             actor_kwargs,
         )
+
+        policy.use_recurrent = True
+        policy.m_size = 1
         return policy
 
     def create_optimizer(self) -> TorchOptimizer:
-        return TorchPPOOptimizer(  # type: ignore
+        return CustomPPOOptimizer(  # type: ignore
             cast(TorchPolicy, self.policy), self.trainer_settings  # type: ignore
         )  # type: ignore
 

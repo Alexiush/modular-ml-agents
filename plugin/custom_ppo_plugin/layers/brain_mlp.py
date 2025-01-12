@@ -1,5 +1,5 @@
 from mlagents.torch_utils import torch, nn
-from mlagents.trainers.torch_entities.layers import LinearEncoder, linear_layer
+from mlagents.trainers.torch_entities.layers import LinearEncoder, linear_layer, LSTM
 from typing import List
 import math
 
@@ -100,3 +100,70 @@ class BrainHardSelection(nn.Module):
     def forward(self, input_tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
         return [feature_selector(features).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]
+    
+class BrainRNN(nn.Module):
+    MODEL_EXPORT_VERSION = 3  # Corresponds to ModelApiVersion.MLAgents2_0
+
+    def __init__(
+        self,
+        input_size: int,
+        aggregation_layers: int,
+        hidden_size: int,
+        memory_size: int,
+        feature_selection_layers: int,
+        output_sizes: List[int],
+        output_channels: List[int]
+    ):
+        super().__init__()
+
+        self.hidden_size = hidden_size
+        self.memory_size = memory_size
+        self.rnn_hidden_size = memory_size // 2
+
+        self.feature_aggregator = LinearEncoder(input_size, aggregation_layers, self.rnn_hidden_size)
+        feature_selectors = []
+
+        for shape, ch in zip(output_sizes, output_channels):
+            selector_layers = []
+            
+            selector_layers.append(linear_layer(self.rnn_hidden_size, hidden_size))
+            for _ in range(feature_selection_layers - 2):
+                selector_layers.append(linear_layer(hidden_size, hidden_size))
+            selector_layers.append(linear_layer(hidden_size, shape * ch))
+
+            feature_selector = torch.nn.Sequential(*selector_layers)
+            feature_selectors.append(feature_selector)
+        self.feature_selectors = nn.ModuleList(feature_selectors)
+
+        self.lstm = LSTM(self.rnn_hidden_size, memory_size)
+        self.memories = torch.zeros([1, memory_size])
+
+        self.output_channels = output_channels
+
+        self.version_number = torch.nn.Parameter(
+            torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
+        )
+
+    def forward(self, input_tensor, memories_mask) -> List[torch.Tensor]:
+        features = self.feature_aggregator(input_tensor)
+        # print(features.shape)
+
+        if len(memories_mask.shape) > 0:
+            mask = torch.ones([self.memories.shape[0], features.shape[0], self.memories.shape[1]], dtype=torch.int32).detach()
+            masked_columns = memories_mask[0, 0].view(1).int()
+
+            mask[:, :, :masked_columns] = 0
+            memories_masked = self.memories * mask
+            # print(self.memories.shape, mask.shape, memories_masked.shape)
+
+            features_out, memories = self.lstm(features.contiguous().view([-1, 1, self.rnn_hidden_size]), memories_masked)
+            # print(features_out.shape)
+            # print(memories.shape, memories[:, -1, :].shape)
+
+            self.memories = memories[:, -1, :] #.reshape([1, self.memory_size])
+        else:
+            features_out = features.contiguous()
+
+        features_out = features.contiguous()
+
+        return [feature_selector(features_out).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]
