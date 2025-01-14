@@ -3,13 +3,7 @@ from mlagents.torch_utils import torch, nn
 from mlagents.trainers.torch_entities.agent_action import AgentAction
 from mlagents.trainers.torch_entities.action_log_probs import ActionLogProbs
 from mlagents_envs.base_env import ActionSpec
-from mlagents.trainers.torch_entities.distributions import (
-    DistInstance,
-    DiscreteDistInstance,
-    GaussianDistribution,
-    MultiCategoricalDistribution,
-)
-from mlagents.trainers.torch_entities.action_model import DistInstances, ActionModel
+from mlagents.trainers.torch_entities.action_model import ActionModel
 
 import itertools
 

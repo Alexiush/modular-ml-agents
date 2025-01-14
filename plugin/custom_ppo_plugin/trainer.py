@@ -6,13 +6,12 @@ from mlagents.trainers.behavior_id_utils import BehaviorIdentifiers
 from mlagents_envs.logging_util import get_logger
 from mlagents.trainers.buffer import BufferKey, RewardSignalUtil
 from mlagents.trainers.policy.torch_policy import TorchPolicy
-from mlagents.trainers.trainer.on_policy_trainer import OnPolicyTrainer, OnPolicyHyperparamSettings
+from mlagents.trainers.trainer.on_policy_trainer import OnPolicyTrainer
 from mlagents.trainers.torch_entities.networks import SimpleActor, SharedActorCritic
 from mlagents.trainers.optimizer.torch_optimizer import TorchOptimizer
-from mlagents.trainers.ppo.optimizer_torch import TorchPPOOptimizer, PPOSettings
-from mlagents.trainers.trajectory import Trajectory, ObsUtil
+from mlagents.trainers.ppo.optimizer_torch import PPOSettings
+from mlagents.trainers.trajectory import Trajectory
 from mlagents.trainers.settings import TrainerSettings
-from mlagents.trainers.settings import ScheduleType, NetworkSettings
 from mlagents.trainers.trainer.trainer_utils import get_gae
 from mlagents.trainers.policy.policy import Policy
 
@@ -77,7 +76,6 @@ class CustomPPOTrainer(OnPolicyTrainer):
             "tanh_squash": False,
         }
         if self.shared_critic:
-            # raise Exception("Only simple actor is supported for now")
             reward_signal_configs = self.trainer_settings.reward_signals
             reward_signal_names = [
                 key.value for key, _ in reward_signal_configs.items()

@@ -146,7 +146,6 @@ class BrainRNN(nn.Module):
 
     def forward(self, input_tensor, memories_mask) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
-        # print(features.shape)
 
         if len(memories_mask.shape) > 0:
             mask = torch.ones([self.memories.shape[0], features.shape[0], self.memories.shape[1]], dtype=torch.int32).detach()
@@ -154,13 +153,9 @@ class BrainRNN(nn.Module):
 
             mask[:, :, :masked_columns] = 0
             memories_masked = self.memories * mask
-            # print(self.memories.shape, mask.shape, memories_masked.shape)
 
             features_out, memories = self.lstm(features.contiguous().view([-1, 1, self.rnn_hidden_size]), memories_masked)
-            # print(features_out.shape)
-            # print(memories.shape, memories[:, -1, :].shape)
-
-            self.memories = memories[:, -1, :] #.reshape([1, self.memory_size])
+            self.memories = memories[:, -1, :]
         else:
             features_out = features.contiguous()
 
