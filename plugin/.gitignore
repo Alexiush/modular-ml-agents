@@ -1,3 +1,6 @@
 /custom_ppo_plugin.egg-info
 /custom_ppo_plugin/__pycache__
 /custom_ppo_plugin/layers/__pycache__
+pyproject.toml
+dist
+build

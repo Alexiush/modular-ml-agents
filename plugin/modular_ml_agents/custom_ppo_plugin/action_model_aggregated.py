@@ -1,4 +1,4 @@
-from typing import List, Tuple, NamedTuple, Optional
+from typing import List, Tuple
 from mlagents.torch_utils import torch, nn
 from mlagents.trainers.torch_entities.agent_action import AgentAction
 from mlagents.trainers.torch_entities.action_log_probs import ActionLogProbs
@@ -42,7 +42,7 @@ def action_probs_combine(
     return ActionLogProbs(continuous_tensor, discrete_list, all_discrete_list)
 
 def get_actions_subset(
-    actions, model, continuous_actions_offset, discrete_actions_offset
+    actions: List[AgentAction], model: ActionModel, continuous_actions_offset: int, discrete_actions_offset: int
 )-> Tuple[int, int, AgentAction]:
     continuous_tensor, discrete_list = None, None
     

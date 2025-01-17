@@ -1,7 +1,6 @@
 from mlagents.torch_utils import torch, nn
 from mlagents.trainers.torch_entities.layers import LinearEncoder, linear_layer, LSTM
 from typing import List
-import math
 
 class BrainMLP(nn.Module):
     MODEL_EXPORT_VERSION = 3  # Corresponds to ModelApiVersion.MLAgents2_0
@@ -37,7 +36,7 @@ class BrainMLP(nn.Module):
             torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
         )
 
-    def forward(self, input_tensor) -> List[torch.Tensor]:
+    def forward(self, input_tensor: torch.Tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
         return [feature_selector(features).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]
     
@@ -46,7 +45,7 @@ class HardSelector(nn.Module):
 
     def __init__(
         self,
-        input_shape,
+        input_shape: int,
         selection_part: float
     ):
         super().__init__()
@@ -97,7 +96,7 @@ class BrainHardSelection(nn.Module):
             torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
         )
 
-    def forward(self, input_tensor) -> List[torch.Tensor]:
+    def forward(self, input_tensor: torch.Tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
         return [feature_selector(features).view(features.shape[0], self.output_channels[i], -1) for i, feature_selector in enumerate(self.feature_selectors)]
     
@@ -144,7 +143,7 @@ class BrainRNN(nn.Module):
             torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False
         )
 
-    def forward(self, input_tensor, memories_mask) -> List[torch.Tensor]:
+    def forward(self, input_tensor: torch.Tensor, memories_mask: torch.Tensor) -> List[torch.Tensor]:
         features = self.feature_aggregator(input_tensor)
 
         if len(memories_mask.shape) > 0:
